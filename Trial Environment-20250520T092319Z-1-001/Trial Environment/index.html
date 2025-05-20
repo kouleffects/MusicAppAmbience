@@ -1,0 +1,348 @@
+<html>
+	<head>
+		<title>INDEX</title>
+		<script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/aframe-physics-system@4.0.1/dist/aframe-physics-system.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.min.js"></script>
+	</head>
+	
+	<!-- User Movement -->
+	
+	<!-- UP-DOWN Movement -->
+	<script>
+	AFRAME.registerComponent('custom-movement', {
+		init: function () {
+		  let el = this.el;
+			this.moveSpeed = 0.1;
+			this.moveUp = false;
+			this.moveDown = false;
+
+			let self = this;
+
+			window.addEventListener('keydown', function (event) {
+				if (event.key === 'q') self.moveUp = true;
+				if (event.key === 'e') self.moveDown = true;
+			});
+
+			window.addEventListener('keyup', function (event) {
+				if (event.key === 'q') self.moveUp = false;
+				if (event.key === 'e') self.moveDown = false;
+			});
+		},
+
+		tick: function () {
+			let position = this.el.getAttribute('position');
+
+			if (this.moveUp) position.y += this.moveSpeed;
+			if (this.moveDown) position.y -= this.moveSpeed;
+
+			this.el.setAttribute('position', position);
+			}
+		});
+	</script>
+	
+	
+	<!-- ACCELERATION -->
+	<script>
+	AFRAME.registerComponent('acceleration-movement', {
+		init: function () {
+			let el = this.el;
+			this.moveSpeed = 0.1;  // Base movement speed
+			this.boostSpeed = 0.5; // Speed when holding "T"
+			this.isBoosting = false;
+			this.movementKeys = { w: false, a: false, s: false, d: false, q: false, e: false };
+
+			let self = this;
+
+			// Handle key down events
+			window.addEventListener('keydown', function (event) {
+				if (self.movementKeys.hasOwnProperty(event.key)) {
+					self.movementKeys[event.key] = true;
+				}
+				if (event.key === 't') {
+					self.isBoosting = true;
+				}
+			});
+
+			// Handle key up events
+			window.addEventListener('keyup', function (event) {
+				if (self.movementKeys.hasOwnProperty(event.key)) {
+					self.movementKeys[event.key] = false;
+				}
+				if (event.key === 't') {
+					self.isBoosting = false;
+				}
+			});
+		},
+
+		tick: function (time, delta) {
+			let el = this.el;
+			let position = el.getAttribute('position');
+
+			let speed = this.isBoosting ? this.boostSpeed : this.moveSpeed; // Adjust speed based on "F"
+
+			// Forward / Backward
+			if (this.movementKeys.w) position.z -= speed;
+			if (this.movementKeys.s) position.z += speed;
+
+			// Left / Right
+			if (this.movementKeys.a) position.x -= speed;
+			if (this.movementKeys.d) position.x += speed;
+
+			// Up / Down
+			if (this.movementKeys.q) position.y += speed;
+			if (this.movementKeys.e) position.y -= speed;
+
+			el.setAttribute('position', position);
+		}
+	});
+	</script>
+	
+	
+	<!-- Foundations -->
+	<script>
+		AFRAME.registerComponent('nav-agent', AFRAME.components['extras'].pathfinding.NavAgent);
+		AFRAME.registerComponent('nav-mesh-constrained', AFRAME.components['extras'].pathfinding.NavMeshConstrained);
+	</script>
+	
+	
+	<!-- User Exp -->
+	<script>
+	AFRAME.registerComponent('change-color', {
+		init: function () {
+			this.originalColor = this.el.getAttribute('material').color;
+				
+			this.el.addEventListener('raycaster-intersected', (evt) => {
+				this.el.setAttribute('material', 'color', 'yellow'); // Change color when scanned
+			});
+
+			this.el.addEventListener('raycaster-intersected-cleared', (evt) => {
+				this.el.setAttribute('material', 'color', this.originalColor); // Reset color when ray leaves
+			});
+		}
+	});
+	
+	
+	AFRAME.registerComponent('play-sound', {
+		init: function () {
+			this.el.addEventListener('click', (evt) => {
+				let sound = this.el.querySelector('a-sound');
+				if (sound) {
+					sound.components.sound.playSound();
+					}
+				});
+			}
+		});
+			
+			
+	</script>
+	
+	<script>
+	AFRAME.registerComponent('cursor-color-change',{
+		init: function () {
+		const cursorEl = this.el;
+		const originalColor = 'black';
+		const hoverColor = 'red';
+		const clickColor = 'white';
+		
+		
+		cursorEl.addEventListener('raycaster-intersection',() =>{
+			cursorEl.setAttribute('material','color',hoverColor);
+			});
+			
+		cursorEl.addEventListener('raycaster-intersection-cleared',() =>{
+			cursorEl.setAttribute('material','color',originalColor);
+			});
+			
+		cursorEl.addEventListener('click',() =>{
+			cursorEl.setAttribute('material','color',clickColor);
+			});
+		}
+	});
+	</script>
+	
+	
+	
+	<script>
+	AFRAME.registerComponent('fuse-cursor-listener', {
+		init: function (){
+			this.el.addEventListener('fusing',function (evt) {
+				console.log('Cursor is now fusing!');
+			});
+			this.el.addEventListener('click',function (evt) {
+				console.log('Click on: ',
+					evt.detail.intersection.object.el.id, 'listened by fuse cursor');
+			});
+			
+			this.el.addEventListener('mousedown',function (evt) {
+				})
+		}
+	});
+	</script>
+	
+	
+	
+	<!-- MUSIC NOTES -->
+	<script>
+		const synth = new Tone.Synth().toDestination();
+		
+		document.querySelector('#notationPanel').addEventListener('click', () => {
+			const menu = document.querySelector('#noteOptions');
+			menu.setAttribute('visible', !menu.getAttribute('visible'));
+		});
+		
+		
+		const notePLanes = document.querySelectorAll('#noteOptions a-plane');
+		notePlanes.forEach(plane => {
+			plane.addEventListener('click', () => {
+				const note = plane.getAttribute('note');
+				synth.triggerAttackRelease(note + '4', '8n');
+			});
+		});
+	</script>
+	
+	
+	
+	<script>
+      // Custom component to toggle the color panel
+      AFRAME.registerComponent('toggle-color-panel', {
+        init: function () {
+          const colorPanel = document.querySelector('#colorPanel');
+          this.el.addEventListener('click', () => {
+            const isVisible = colorPanel.getAttribute('visible');
+            colorPanel.setAttribute('visible', !isVisible);
+          });
+        }
+      });
+	  
+	  
+	  // Custom component to toggle the shape panel
+      AFRAME.registerComponent('toggle-shape-panel', {
+        init: function () {
+          const shapePanel = document.querySelector('#shapePanel');
+          this.el.addEventListener('click', () => {
+            const isVisible = shapePanel.getAttribute('visible');
+            shapePanel.setAttribute('visible', !isVisible);
+          });
+        }
+      });
+	  
+	
+	//SHAPE VISIBILITY
+	AFRAME.registerComponent('spawn-shape-on-click', {
+		init: function () {
+			this.el.addEventListener('click', () => {
+			const shapeType = this.el.getAttribute('shape');
+			if (!shapeType) return;
+
+			const newEntity = document.createElement('a-entity');
+			newEntity.setAttribute('geometry', {
+				primitive: shapeType,
+				radius: 0.5,
+				height: 1,
+				width: 1,
+				depth: 1
+			});
+			
+			newEntity.setAttribute('material', 'color', this.el.getAttribute('color'));
+
+			const camera = document.querySelector('[camera]').object3D;
+			const camPos = camera.position.clone();
+			const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+			const spawnPos = camPos.add(direction.multiplyScalar(2));
+
+			newEntity.setAttribute('position', spawnPos);
+			newEntity.setAttribute('dynamic-body', ''); // if you're using physics
+	
+			document.querySelector('a-scene').appendChild(newEntity);
+			});
+		}
+	});
+    </script>
+
+
+	
+	
+	<body>
+		<a-scene>
+			<a-sky color="darkblue"></a-sky>
+			
+			<a-assets>
+				<audio id="sound-D" src="Assets/D.wav"></audio>
+				<audio id="sound-megalovania" src="Assets/megalovania.wav"></audio>
+				<audio id="sound-bruh" src="Assets/bruh.wav"></audio>
+			</a-assets>
+			
+			<a-entity id="player" camera look-controls custom-movement acceleration-movement wasd-controls="acceleration:40" 
+				nav-agent position="-2 1.8 5"
+				raycaster="objects: .collidable; showLine: true; lineColor: red; far: 20; interval: 200">
+				<a-cursor geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02" rayOrigin="mouse" color="black" material="color: black" cursor-color-change raycaster="objects: .collidable; far: 20;"></a-cursor>
+				<a-entity id="msg-1" text="" scale="2 2 0" position="0 -0.7 -1"></a-entity>
+				<!--<a-entity fuse-cursor-listener cursor="fuse: true; fuseTimeout: 1500;" ></a-entity>-->
+			</a-entity>
+			
+			
+			
+			
+			<a-entity id="togglePlane">
+				<a-plane position="-2 5 -6" scale="20 10 20" color="black" class="board"></a-plane>
+					<a-plane position="-8 5 -5.9" scale="5 5 5" color="brown" class="collidable" 
+					toggle-color-panel></a-plane>
+					<a-plane position="-2 5 -5.9" scale="5 5 5" color="green" class="collidable"
+					toggle-shape-panel></a-plane>
+					<a-plane position="4 5 -5.9" scale="5 5 5" color="yellow" class="collidable"
+					toggle-shape-panel></a-plane>
+			</a-entity>
+			
+			<a-plane id="navmesh" position="0 0 -5" rotation="-90 0 0" width="100" height="100" color="#777"></a-plane>
+			
+			
+			
+			
+			
+			
+			<a-entity id="colorPanel" visible="false">
+				<a-plane position="-10.6 9 -5.9" scale="1 1 1" color="#FF0000"></a-plane>
+				<a-plane position="-9 9 -5.9" scale="1 1 1" color="#00FF00"></a-plane>
+				<a-plane position="-7.4 9 -5.9" scale="1 1 1" color="#0000FF"></a-plane>
+				<a-plane position="-5.9 9 -5.9" scale="1 1 1" color="#FFFF00"></a-plane>
+			</a-entity>
+			
+			
+			<a-entity id="shapePanel" visible="false">
+				<a-plane position="-4.3 9 -5.9" scale="1 1 1" shape="box" spawn-shape-on-click></a-plane>
+				<a-plane position="-2.8 9 -5.9" scale="1 1 1" shape="sphere" spawn-shape-on-click></a-plane>
+				<a-plane position="-1.3 9 -5.9" scale="1 1 1" shape="cylinder" spawn-shape-on-click></a-plane>
+				<a-plane position="0.2 9 -5.9" scale="1 1 1" shape="cone" spawn-shape-on-click></a-plane>
+			</a-entity>
+			
+			
+			
+			
+			
+			
+			
+			
+			<a-box id="target-box" position="-2 1 -4" scale="1 1 1" color="cyan" class="collidable" 
+				play-sound change-color>
+				<a-sound src="#sound-D" autoplay="false"></a-sound>
+			</a-box>
+			
+			<a-box id="target-box" position="-6 1 -4" scale="1 1 1" color="blue" class="collidable" 
+				play-sound change-color>
+				<a-sound src="#sound-megalovania" autoplay="false"></a-sound>
+			</a-box>
+			
+			<a-box id="target-box" position="2 1 -4" scale="1 1 1" color="green" class="collidable" 
+				play-sound change-color>
+				<a-sound src="#sound-bruh" autoplay="false"></a-sound>
+			</a-box>
+			
+			<a-box position="0 0 0" scale="1 1 10" color="orange"></a-box>
+			
+			<a-box position="-4 0 0" scale="1 1 10" color="orange"></a-box>
+			
+		</a-scene>
+	</body>
+</html>
